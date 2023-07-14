@@ -183,11 +183,12 @@ def train(logdir, args):
 
     x_corr, y_corr = load_cifar10c(10000)
     test_data = TensorDataset(x_corr,y_corr)
-
-    loaders[1] = torch.utils.data.DataLoader(test_data,batch_size=args.batch_size*args.gpu_per_node*2,transforms=transforms.Normalize(
+    test_transforms = transforms.Compose([transforms.Resize(224),
+                                          transforms.Normalize(
         mean=[0.4914, 0.4822, 0.4465],
         std=[0.2023, 0.1994, 0.2010],
-    ))
+    )])
+    loaders[1] = torch.utils.data.DataLoader(test_data,batch_size=args.batch_size*args.gpu_per_node*2,transforms=test_transforms)
 
 
     best_model.eval()
