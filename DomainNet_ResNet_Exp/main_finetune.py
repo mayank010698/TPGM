@@ -14,6 +14,11 @@ from utils import (
 )
 from utils.clip_utils import clip_config
 from utils.tpgm import tpgm_trainer
+from cifar_loader import get_train_valid_loader, get_test_loader
+from robustbench.data import load_cifar10c
+from torch.utils.data import TensorDataset
+from torchvision import transforms
+
 
 
 def train(logdir, args):
@@ -22,28 +27,36 @@ def train(logdir, args):
     device = torch.device("cuda")
 
     # Setup dataloader
-    t_loader = get_loader(
-        "train", name=args.dataset, meta_dir=args.meta_dir, site=args.site, data_dir=args.data_dir, percent=args.percent
-    )
-    v_loader = get_loader(
-        "val", name=args.dataset, meta_dir=args.meta_dir, site=args.site, data_dir=args.data_dir, percent=args.percent
-    )
-    pgm_loader = get_loader(
-        "val", name=args.dataset, meta_dir=args.meta_dir, site=args.site, data_dir=args.data_dir, percent=args.percent
-    )
+    # t_loader = get_loader(
+    #     "train", name=args.dataset, meta_dir=args.meta_dir, site=args.site, data_dir=args.data_dir, percent=args.percent
+    # )
+    # v_loader = get_loader(
+    #     "val", name=args.dataset, meta_dir=args.meta_dir, site=args.site, data_dir=args.data_dir, percent=args.percent
+    # )
+    # pgm_loader = get_loader(
+    #     "val", name=args.dataset, meta_dir=args.meta_dir, site=args.site, data_dir=args.data_dir, percent=args.percent
+    # )
+
+    t_loader, v_loader, train_sampler, valid_sampler = get_train_valid_loader(os.getcwd(),
+                                                                              batch_size=args.batch_size,
+                                                                              augment=True,
+                                                                              random_seed=0,
+                                                                              valid_size=0.1)
+    
 
     trainloader = data.DataLoader(
         t_loader,
-        shuffle=True,
         batch_size=args.batch_size*args.gpu_per_node,
+        sampler=train_sampler,
         num_workers=args.n_workers,
     )
 
     valloader = data.DataLoader(
         v_loader,
-        batch_size=args.batch_size*args.gpu_per_node,
+        batch_size=args.batch_size*args.gpu_per_node, 
+        sampler=valid_sampler,
         num_workers=args.n_workers,
-    )        
+    )       
 
     n_classes = args.n_classes
 
@@ -109,7 +122,7 @@ def train(logdir, args):
 
     # Setup automatic PGM parameters, optimizer, and scheduler
     if bool(args.proj_freq):
-        sampler_tpgm = torch.utils.data.RandomSampler(pgm_loader)
+        sampler_tpgm = torch.utils.data.RandomSampler(v_loader)
         pgmloader = torch.utils.data.DataLoader(
             v_loader,
             sampler=sampler_tpgm,
@@ -163,19 +176,19 @@ def train(logdir, args):
         )
     # ================================ Testing ==========================================
     print("start testing")
-    sites = ["real", "sketch", "painting", "infograph", "clipart"]
-    datasets = [
-        get_loader("test", name=args.dataset, meta_dir=args.meta_dir, data_dir=args.data_dir, site=site)
-        for site in sites
-    ]
-    loaders = [
-        data.DataLoader(
-            dataset,
-            batch_size=args.batch_size * args.gpu_per_node * 2,
-            num_workers=args.n_workers,
-        )
-        for dataset in datasets
-    ]
+    sites = ["cifar10","cifar10c"]
+
+    loaders = []
+    loaders[0] = get_test_loader(os.getcwd(),batch_size=args.batch_size*args.gpu_per_node * 2)
+
+    x_corr, y_corr = load_cifar10c(10000)
+    test_data = TensorDataset(x_corr,y_corr)
+
+    loaders[1] = torch.utils.data.DataLoader(test_data,batch_size=args.batch_size*args.gpu_per_node*2,transforms=transforms.Normalize(
+        mean=[0.4914, 0.4822, 0.4465],
+        std=[0.2023, 0.1994, 0.2010],
+    ))
+
 
     best_model.eval()
     with torch.no_grad():
