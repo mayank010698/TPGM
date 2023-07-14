@@ -3,6 +3,20 @@ import torchvision.transforms as transforms
 from PIL import Image
 from torch.utils.data import Dataset
 
+class Cifar10CDataset(Dataset):
+	def __init__(
+		self, x_corr, y_corr, transform
+	):
+		self.transform = transform
+		self.x = x_corr
+		self.y = y_corr
+		
+	def __len__(self):
+		return len(self.y)
+	def __getitem__(self,idx):
+		if self.transform is not None:
+			x = self.transform(self.x[idx])
+		return x,self.y[idx]
 class DomainNetDataset(Dataset):
     def __init__(
         self, data_dir, meta_dir, sites, train="train", percent=100, transform=None
