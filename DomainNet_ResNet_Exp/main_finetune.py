@@ -117,7 +117,7 @@ def train(logdir, args):
     #     model = get_model(**model_cfg, num_classes=n_classes).to(device)
 
 
-    model = load_model("standard","models","cifar10","corruptions")
+    model = load_model("Standard","models","cifar10","corruptions")
     model = torch.nn.DataParallel(model, device_ids=range(torch.cuda.device_count()))
 
     # Setup automatic PGM parameters, optimizer, and scheduler
@@ -179,7 +179,7 @@ def train(logdir, args):
     sites = ["cifar10","cifar10c"]
 
     loaders = []
-    loaders[0] = get_test_loader(os.getcwd(),batch_size=args.batch_size*args.gpu_per_node * 2)
+    loaders.append(get_test_loader(os.getcwd(),batch_size=args.batch_size*args.gpu_per_node * 2))
 
     # x_corr, y_corr = load_cifar10c(10000)
     # test_data = TensorDataset(x_corr,y_corr)
@@ -188,7 +188,7 @@ def train(logdir, args):
     #     mean=[0.4914, 0.4822, 0.4465],
     #     std=[0.2023, 0.1994, 0.2010],
     # )])
-    loaders[1] = torch.utils.data.DataLoader(te_dataset,batch_size=args.batch_size*args.gpu_per_node*2)
+    loaders.append(torch.utils.data.DataLoader(te_dataset,batch_size=args.batch_size*args.gpu_per_node*2))
 
 
     best_model.eval()

@@ -2,10 +2,10 @@ python main_finetune.py --arch clip_resnet50 \
                         --id clip_vanilla \
                         --percent 100 \
                         --lr 1e-3 \
-                        --epoch 1 \
+                        --epoch 0 \
                         --gpu_per_node 4  \
                         --batch_size 64 \
                         --data_dir /datasets/domainnet \
                         --meta_dir ./datasets/ \
-                        --load_pretrained pre_trained/clip_resnet50_pretrain.pt
+                        --load_pretrained pre_trained/clip_resnet50_pretrain.pt \
                         --n_classes 10

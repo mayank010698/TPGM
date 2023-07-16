@@ -137,7 +137,7 @@ def get_test_loader(data_dir,
 
     # define transform
     transform = transforms.Compose([
-        transforms.Resize(224),
+    #    transforms.Resize(224),
         transforms.ToTensor(),
         normalize,
     ])
