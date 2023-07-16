@@ -60,13 +60,13 @@ def get_train_valid_loader(data_dir,
 
     # define transforms
     valid_transform = transforms.Compose([
-			transforms.Resize(224),
+			# transforms.Resize(224),
             transforms.ToTensor(),
             normalize,
     ])
     if augment:
         train_transform = transforms.Compose([
-			transforms.Resize(224),
+			# transforms.Resize(224),
             transforms.RandomHorizontalFlip(),
             transforms.ToTensor(),
             normalize,

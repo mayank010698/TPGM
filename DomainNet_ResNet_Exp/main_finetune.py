@@ -18,6 +18,7 @@ from cifar_loader import get_train_valid_loader, get_test_loader
 from robustbench.data import load_cifar10c
 from torch.utils.data import TensorDataset
 from torchvision import transforms
+from cifar10c import get_loaders
 
 
 
@@ -37,24 +38,22 @@ def train(logdir, args):
     #     "val", name=args.dataset, meta_dir=args.meta_dir, site=args.site, data_dir=args.data_dir, percent=args.percent
     # )
 
-    t_loader, v_loader, train_sampler, valid_sampler = get_train_valid_loader(os.getcwd(),
-                                                                              batch_size=args.batch_size,
-                                                                              augment=True,
-                                                                              random_seed=0,
-                                                                              valid_size=0.1)
-    
+    # t_loader, v_loader, train_sampler, valid_sampler = get_train_valid_loader(os.getcwd(),
+    #                                                                           batch_size=args.batch_size,
+    #                                                                           augment=True,
+    #                                                                           random_seed=0,
+    #                                                                           valid_size=0.1)
+    tr_dataset, val_dataset, te_dataset = get_loaders("cifar10c","./data",["brightness"],5)
 
     trainloader = data.DataLoader(
-        t_loader,
+        tr_dataset,
         batch_size=args.batch_size*args.gpu_per_node,
-        sampler=train_sampler,
         num_workers=args.n_workers,
     )
 
     valloader = data.DataLoader(
-        v_loader,
+        val_dataset,
         batch_size=args.batch_size*args.gpu_per_node, 
-        sampler=valid_sampler,
         num_workers=args.n_workers,
     )       
 
@@ -122,9 +121,9 @@ def train(logdir, args):
 
     # Setup automatic PGM parameters, optimizer, and scheduler
     if bool(args.proj_freq):
-        sampler_tpgm = torch.utils.data.RandomSampler(v_loader)
+        sampler_tpgm = torch.utils.data.RandomSampler(val_dataset)
         pgmloader = torch.utils.data.DataLoader(
-            v_loader,
+            val_dataset,
             sampler=sampler_tpgm,
             batch_size=args.batch_size,
             num_workers=args.n_workers,
@@ -137,7 +136,7 @@ def train(logdir, args):
             args.norm_mode,
             args.proj_lr,
             args.max_iters,
-            exclude_list=["head.weight","head.bias"]
+            exclude_list=["fc.weight","fc.bias"]
         )
     else:
         tpgm = None
@@ -181,14 +180,14 @@ def train(logdir, args):
     loaders = []
     loaders[0] = get_test_loader(os.getcwd(),batch_size=args.batch_size*args.gpu_per_node * 2)
 
-    x_corr, y_corr = load_cifar10c(10000)
-    test_data = TensorDataset(x_corr,y_corr)
-    test_transforms = transforms.Compose([transforms.Resize(224),
-                                          transforms.Normalize(
-        mean=[0.4914, 0.4822, 0.4465],
-        std=[0.2023, 0.1994, 0.2010],
-    )])
-    loaders[1] = torch.utils.data.DataLoader(test_data,batch_size=args.batch_size*args.gpu_per_node*2,transforms=test_transforms)
+    # x_corr, y_corr = load_cifar10c(10000)
+    # test_data = TensorDataset(x_corr,y_corr)
+    # test_transforms = transforms.Compose([transforms.Resize(224),
+    #                                       transforms.Normalize(
+    #     mean=[0.4914, 0.4822, 0.4465],
+    #     std=[0.2023, 0.1994, 0.2010],
+    # )])
+    loaders[1] = torch.utils.data.DataLoader(te_dataset,batch_size=args.batch_size*args.gpu_per_node*2)
 
 
     best_model.eval()

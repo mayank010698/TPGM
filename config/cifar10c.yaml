@@ -1,0 +1,147 @@
+# @package _global_
+
+defaults:
+  - _self_
+  - user: username
+
+wandb:
+  project: surgical-finetuning
+  exp_name: none
+  sweep_filename: none
+  use: false
+  
+data:
+  dataset_name: cifar10
+  model_name: Standard 
+  corruption_types: [brightness]
+  severity: 5
+  batch_size: 64
+  num_workers: 2
+
+
+
+
+    # dataset parameters
+    parser.add_argument(
+        "--dataset",
+        nargs="?",
+        type=str,
+        default="domainnet",
+        help="Dataset name",
+    )
+    parser.add_argument(
+        "--meta_dir",
+        nargs="?",
+        type=str,
+        default= "./datasets/",
+        help="Dataset meta information directory",
+    )
+    parser.add_argument(
+        "--data_dir",
+        nargs="?",
+        type=str,
+        default="/datasets/domainnet",
+        help="Image data directory",
+    )
+    parser.add_argument(
+        "--site",
+        nargs="?",
+        type=str,
+        default="real",
+        help="DomainNet site",
+    )
+    parser.add_argument(
+        "--percent",
+        nargs="?",
+        type=str,
+        default="5",
+        help="DomainNet percentage",
+    )
+    parser.add_argument(
+        "--n_classes",
+        nargs="?",
+        type=int,
+        default=345,
+        help="Number of classes",
+    )
+
+    # optimizer
+    parser.add_argument(
+        "--optimizer",
+        nargs="?",
+        type=str,
+        default="sgd",
+        help="optimizer type",
+    )
+    parser.add_argument(
+        "--lr",
+        default=None,
+        type=float,
+        help="Custom Learning Rate",
+    )
+
+    parser.add_argument(
+        "--load_ft",
+        nargs="?",
+        type=str,
+        default=None,
+        help="load fine-tuned checkpoint",
+    )
+
+    # projection hyperparameters
+    parser.add_argument("--proj_freq", default=0, type=int)
+    parser.add_argument("--max_iters", default=1, type=int)
+    parser.add_argument(
+        "--proj_lr",
+        default=1e-2,
+        type=float,
+        help="Custom Project Learning Rate",
+    )
+    parser.add_argument("--norm_mode", default="mars", type=str)
+    parser.add_argument(
+        "--mu", default=0.0, type=float, help="Hyperparamter for TV smoothing"
+    )
+
+    args = parser.parse_args()
+    main(args)
+
+args:
+  arch: clip_resnet50
+  output_dir:
+  load_pretrained: 
+  id: 
+  epoch: 
+  batch_size: 
+  val_freq:
+  n_workers:
+  pin_mem:
+  dataset:
+  meta_dir:
+  data_dir:
+  site:
+  percent:
+  n_classes:
+  optimizer:
+  lr:
+  load_ft:
+
+tpgm:
+  proj_freq: 0
+  max_iters: 1
+  proj_lr: 1e-2
+  norm_mode: mars
+  mu: 0
+
+
+  train_mode: eval
+  tune_option: first_two
+  train_n: 1000
+  epochs: 20
+  seed: 0
+  log_dir: cifar
+  auto_tune: none
+  
+hydra:
+  output_subdir: hydra
+  run:
+    dir: ./results/${data.dataset_name}/${now:%Y.%m.%d}
