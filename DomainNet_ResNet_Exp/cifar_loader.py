@@ -139,7 +139,7 @@ def get_test_loader(data_dir,
     transform = transforms.Compose([
     #    transforms.Resize(224),
         transforms.ToTensor(),
-        normalize,
+    #    normalize,
     ])
 
     dataset = datasets.CIFAR10(

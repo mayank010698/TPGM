@@ -20,7 +20,8 @@ def get_loaders(dataset_name, data_dir,corruption_type, severity):
 		labels[i] = [ind for ind, n in enumerate(y_corr) if n == i]
 	# num_ex = cfg.args.train_n // num_classes
 	# num_ex = cfg.args.train_n // num_classes
-	num_ex = 10000 // num_classes
+	#num_ex = 10000 // num_classes
+	num_ex = 90
 
 	tr_idxs = []
 	val_idxs = []

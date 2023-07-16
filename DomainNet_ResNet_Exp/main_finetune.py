@@ -44,7 +44,7 @@ def train(logdir, args):
     #                                                                           augment=True,
     #                                                                           random_seed=0,
     #                                                                           valid_size=0.1)
-    tr_dataset, val_dataset, te_dataset = get_loaders("cifar10c",".","brightness",5)
+    tr_dataset, val_dataset, te_dataset = get_loaders("cifar10c",".","zoom_blur",5)
 
     trainloader = data.DataLoader(
         tr_dataset,
@@ -188,7 +188,7 @@ def train(logdir, args):
     #     mean=[0.4914, 0.4822, 0.4465],
     #     std=[0.2023, 0.1994, 0.2010],
     # )])
-    loaders.append(torch.utils.data.DataLoader(te_dataset,batch_size=args.batch_size*args.gpu_per_node*2))
+    loaders.append(torch.utils.data.DataLoader(tr_dataset,batch_size=args.batch_size*args.gpu_per_node*2))
 
 
     best_model.eval()
@@ -280,7 +280,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--print_interval",
-        default=100,
+        default=4,
         type=int,
         help="print interval",
     )
