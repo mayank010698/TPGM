@@ -19,6 +19,7 @@ from robustbench.data import load_cifar10c
 from torch.utils.data import TensorDataset
 from torchvision import transforms
 from cifar10c import get_loaders
+from robustbench.utils import load_model
 
 
 
@@ -60,63 +61,63 @@ def train(logdir, args):
     n_classes = args.n_classes
 
     # Setup model
-    model_cfg = {"arch": args.arch}
+    # model_cfg = {"arch": args.arch}
 
-    # Setup Model and load pre-train
-    if args.load_pretrained is not None:
-        if os.path.isfile(args.load_pretrained):
-            info = "Loading model and optimizer from checkpoint '{}'".format(
-                args.load_pretrained
-            )
-            dump_logs(logdir, info + "\n")
+    # # Setup Model and load pre-train
+    # if args.load_pretrained is not None:
+    #     if os.path.isfile(args.load_pretrained):
+    #         info = "Loading model and optimizer from checkpoint '{}'".format(
+    #             args.load_pretrained
+    #         )
+    #         dump_logs(logdir, info + "\n")
 
-            with open(args.load_pretrained, "rb") as fp:
-                checkpoint = torch.load(fp)
+    #         with open(args.load_pretrained, "rb") as fp:
+    #             checkpoint = torch.load(fp)
 
-            if "clip" in args.load_pretrained:
-                checkpoint = checkpoint.state_dict()
-                clip_config(model_cfg, checkpoint, pretrained=True)
-                checkpoint = {
-                    k.replace("visual.", ""): v
-                    for k, v in checkpoint.items()
-                    if "transformer" not in k
-                }
+    #         if "clip" in args.load_pretrained:
+    #             checkpoint = checkpoint.state_dict()
+    #             clip_config(model_cfg, checkpoint, pretrained=True)
+    #             checkpoint = {
+    #                 k.replace("visual.", ""): v
+    #                 for k, v in checkpoint.items()
+    #                 if "transformer" not in k
+    #             }
 
-            elif "moco" in args.load_pretrained:
-                checkpoint = checkpoint["state_dict"]
-                checkpoint = {
-                    k.replace("base_encoder.", "").replace("module.", ""): v
-                    for k, v in checkpoint.items()
-                }
+    #         elif "moco" in args.load_pretrained:
+    #             checkpoint = checkpoint["state_dict"]
+    #             checkpoint = {
+    #                 k.replace("base_encoder.", "").replace("module.", ""): v
+    #                 for k, v in checkpoint.items()
+    #             }
 
-            model = get_model(**model_cfg, num_classes=n_classes).to(device)
+    #         model = get_model(**model_cfg, num_classes=n_classes).to(device)
 
-            model_dict = model.state_dict()
-            filtered_checkpoint = {
-                k: v
-                for k, v in checkpoint.items()
-                if k in model_dict and v.shape == model_dict[k].shape
-            }
+    #         model_dict = model.state_dict()
+    #         filtered_checkpoint = {
+    #             k: v
+    #             for k, v in checkpoint.items()
+    #             if k in model_dict and v.shape == model_dict[k].shape
+    #         }
 
-            model.load_state_dict(filtered_checkpoint, strict=False)
-            info = "Loaded pretrained model '{}' and {}/{} layers".format(
-                args.load_pretrained, len(filtered_checkpoint), len(model_dict)
-            )
-            dump_logs(logdir, info + "\n")
-            print(info)
-        else:
-            info = "No pretrained model found at '{}'".format(args.load_pretrained)
-            print(info)
-            dump_logs(logdir, info + "\n")
-            model = get_model(**model_cfg, num_classes=n_classes).to(device)
-    else:
-        info = "Use random initialization"
-        dump_logs(logdir, info + "\n")
-        print(info)
-        model = get_model(**model_cfg, num_classes=n_classes).to(device)
+    #         model.load_state_dict(filtered_checkpoint, strict=False)
+    #         info = "Loaded pretrained model '{}' and {}/{} layers".format(
+    #             args.load_pretrained, len(filtered_checkpoint), len(model_dict)
+    #         )
+    #         dump_logs(logdir, info + "\n")
+    #         print(info)
+    #     else:
+    #         info = "No pretrained model found at '{}'".format(args.load_pretrained)
+    #         print(info)
+    #         dump_logs(logdir, info + "\n")
+    #         model = get_model(**model_cfg, num_classes=n_classes).to(device)
+    # else:
+    #     info = "Use random initialization"
+    #     dump_logs(logdir, info + "\n")
+    #     print(info)
+    #     model = get_model(**model_cfg, num_classes=n_classes).to(device)
 
 
-    
+    model = load_model("standard","models","cifar10","corruptions")
     model = torch.nn.DataParallel(model, device_ids=range(torch.cuda.device_count()))
 
     # Setup automatic PGM parameters, optimizer, and scheduler

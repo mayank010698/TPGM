@@ -8,3 +8,4 @@ python main_finetune.py --arch clip_resnet50 \
                         --data_dir /datasets/domainnet \
                         --meta_dir ./datasets/ \
                         --load_pretrained pre_trained/clip_resnet50_pretrain.pt
+                        --n_classes 10
