@@ -43,7 +43,7 @@ def train(logdir, args):
     #                                                                           augment=True,
     #                                                                           random_seed=0,
     #                                                                           valid_size=0.1)
-    tr_dataset, val_dataset, te_dataset = get_loaders("cifar10c","./data",["brightness"],5)
+    tr_dataset, val_dataset, te_dataset = get_loaders("cifar10c",".","brightness",5)
 
     trainloader = data.DataLoader(
         tr_dataset,
