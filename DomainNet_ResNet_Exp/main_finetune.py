@@ -28,198 +28,126 @@ def train(logdir, args):
     dump_logs(logdir, "Let the games begin")
     device = torch.device("cuda")
 
-    # Setup dataloader
-    # t_loader = get_loader(
-    #     "train", name=args.dataset, meta_dir=args.meta_dir, site=args.site, data_dir=args.data_dir, percent=args.percent
-    # )
-    # v_loader = get_loader(
-    #     "val", name=args.dataset, meta_dir=args.meta_dir, site=args.site, data_dir=args.data_dir, percent=args.percent
-    # )
-    # pgm_loader = get_loader(
-    #     "val", name=args.dataset, meta_dir=args.meta_dir, site=args.site, data_dir=args.data_dir, percent=args.percent
-    # )
-
-    # t_loader, v_loader, train_sampler, valid_sampler = get_train_valid_loader(os.getcwd(),
-    #                                                                           batch_size=args.batch_size,
-    #                                                                           augment=True,
-    #                                                                           random_seed=0,
-    #                                                                           valid_size=0.1)
-    tr_dataset, val_dataset, te_dataset = get_loaders("cifar10c",".","zoom_blur",5)
-
-    trainloader = data.DataLoader(
-        tr_dataset,
-        batch_size=args.batch_size*args.gpu_per_node,
-        num_workers=args.n_workers,
-    )
-
-    valloader = data.DataLoader(
-        val_dataset,
-        batch_size=args.batch_size*args.gpu_per_node, 
-        num_workers=args.n_workers,
-    )       
-
-    n_classes = args.n_classes
-
-    # Setup model
-    # model_cfg = {"arch": args.arch}
-
-    # # Setup Model and load pre-train
-    # if args.load_pretrained is not None:
-    #     if os.path.isfile(args.load_pretrained):
-    #         info = "Loading model and optimizer from checkpoint '{}'".format(
-    #             args.load_pretrained
-    #         )
-    #         dump_logs(logdir, info + "\n")
-
-    #         with open(args.load_pretrained, "rb") as fp:
-    #             checkpoint = torch.load(fp)
-
-    #         if "clip" in args.load_pretrained:
-    #             checkpoint = checkpoint.state_dict()
-    #             clip_config(model_cfg, checkpoint, pretrained=True)
-    #             checkpoint = {
-    #                 k.replace("visual.", ""): v
-    #                 for k, v in checkpoint.items()
-    #                 if "transformer" not in k
-    #             }
-
-    #         elif "moco" in args.load_pretrained:
-    #             checkpoint = checkpoint["state_dict"]
-    #             checkpoint = {
-    #                 k.replace("base_encoder.", "").replace("module.", ""): v
-    #                 for k, v in checkpoint.items()
-    #             }
-
-    #         model = get_model(**model_cfg, num_classes=n_classes).to(device)
-
-    #         model_dict = model.state_dict()
-    #         filtered_checkpoint = {
-    #             k: v
-    #             for k, v in checkpoint.items()
-    #             if k in model_dict and v.shape == model_dict[k].shape
-    #         }
-
-    #         model.load_state_dict(filtered_checkpoint, strict=False)
-    #         info = "Loaded pretrained model '{}' and {}/{} layers".format(
-    #             args.load_pretrained, len(filtered_checkpoint), len(model_dict)
-    #         )
-    #         dump_logs(logdir, info + "\n")
-    #         print(info)
-    #     else:
-    #         info = "No pretrained model found at '{}'".format(args.load_pretrained)
-    #         print(info)
-    #         dump_logs(logdir, info + "\n")
-    #         model = get_model(**model_cfg, num_classes=n_classes).to(device)
-    # else:
-    #     info = "Use random initialization"
-    #     dump_logs(logdir, info + "\n")
-    #     print(info)
-    #     model = get_model(**model_cfg, num_classes=n_classes).to(device)
-
-
-    model = load_model("Standard","models","cifar10","corruptions")
-    model = torch.nn.DataParallel(model, device_ids=range(torch.cuda.device_count()))
-
-    # Setup automatic PGM parameters, optimizer, and scheduler
-    if bool(args.proj_freq):
-        sampler_tpgm = torch.utils.data.RandomSampler(val_dataset)
-        pgmloader = torch.utils.data.DataLoader(
-            val_dataset,
-            sampler=sampler_tpgm,
-            batch_size=args.batch_size,
+    CORRUPTIONS = ["shot_noise", "motion_blur", "snow", "pixelate",
+               "gaussian_noise", "defocus_blur", "brightness", "fog",
+               "zoom_blur", "frost", "glass_blur", "impulse_noise", "contrast",
+               "jpeg_compression", "elastic_transform"]
+    
+    for i in range(3):
+        corruption = CORRUPTIONS[i]
+        tr_dataset, val_dataset, te_dataset = get_loaders("cifar10c",".",corruption,5)
+      
+        trainloader = data.DataLoader(
+            tr_dataset,
+            batch_size=args.batch_size*args.gpu_per_node,
             num_workers=args.n_workers,
-            drop_last=False,
-            persistent_workers=True,
         )
-        tpgm = tpgm_trainer(
-            model,
-            pgmloader,
-            args.norm_mode,
-            args.proj_lr,
-            args.max_iters,
-            exclude_list=["fc.weight","fc.bias"]
-        )
-    else:
-        tpgm = None
 
-    # Setup optimizer, lr_scheduler and loss function
-    optimizer_params = {
-        "lr": args.lr,
-        "weight_decay": 5.0e-4,
-        "momentum": 0.9,
-        "nesterov": True,
-    }
-    optimizer = torch.optim.SGD(model.parameters(), **optimizer_params)
-    loss_fn = torch.nn.CrossEntropyLoss(reduction="mean")
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epoch)
+        valloader = data.DataLoader(
+            val_dataset,
+            batch_size=args.batch_size*args.gpu_per_node, 
+            num_workers=args.n_workers,
+        )       
 
-    start_epoch = 0
-    best_acc1 = -100.0
-    best_model = model
-
-    # ================================ Training ==========================================
-    for epoch in range(start_epoch, args.epoch):
-        best_acc1, best_model = train_one_epoch(
-            args,
-            model,
-            loss_fn,
-            optimizer,
-            scheduler,
-            tpgm,
-            trainloader,
-            valloader,
-            device,
-            logdir,
-            epoch,
-            best_acc1,
-            best_model,
-        )
-    # ================================ Testing ==========================================
-    print("start testing")
-    sites = ["cifar10","cifar10c"]
-
-    loaders = []
-    loaders.append(get_test_loader(os.getcwd(),batch_size=args.batch_size*args.gpu_per_node * 2))
-
-    # x_corr, y_corr = load_cifar10c(10000)
-    # test_data = TensorDataset(x_corr,y_corr)
-    # test_transforms = transforms.Compose([transforms.Resize(224),
-    #                                       transforms.Normalize(
-    #     mean=[0.4914, 0.4822, 0.4465],
-    #     std=[0.2023, 0.1994, 0.2010],
-    # )])
-    loaders.append(torch.utils.data.DataLoader(tr_dataset,batch_size=args.batch_size*args.gpu_per_node*2))
+        n_classes = args.n_classes
 
 
-    best_model.eval()
-    with torch.no_grad():
-        for site, loader in zip(sites, loaders):
-            test_top1 = AverageMeter("Acc@1", ":6.2f")
-            test_top5 = AverageMeter("Acc@5", ":6.2f")
-            for i, (image, target) in enumerate(loader):
-                image = image.to(device)
-                target = target.to(device)
-                logit = best_model(image)
+        model = load_model("Standard","models","cifar10","corruptions")
+        model = torch.nn.DataParallel(model, device_ids=range(torch.cuda.device_count()))
 
-                acc1, acc5 = accuracy(logit, target, topk=(1, 5))
-                test_top1.update(acc1[0], image.size(0))
-                test_top5.update(acc5[0], image.size(0))
-                if i % args.print_interval == 0:
-                    output = "{} test: [{}/{}]".format(
-                        site,
-                        i,
-                        len(loader),
-                    )
-                    print(output)
-
-            output = "{site} test results: Prec@1 {top1.avg:.3f} Prec@5 {top5.avg:.3f}\t".format(
-                site=site,
-                top1=test_top1,
-                top5=test_top5,
+        # Setup automatic PGM parameters, optimizer, and scheduler
+        if bool(args.proj_freq):
+            sampler_tpgm = torch.utils.data.RandomSampler(val_dataset)
+            pgmloader = torch.utils.data.DataLoader(
+                val_dataset,
+                sampler=sampler_tpgm,
+                batch_size=args.batch_size,
+                num_workers=args.n_workers,
+                drop_last=False,
+                persistent_workers=True,
             )
+            tpgm = tpgm_trainer(
+                model,
+                pgmloader,
+                args.norm_mode,
+                args.proj_lr,
+                args.max_iters,
+                exclude_list=["fc.weight","fc.bias"]
+            )
+        else:
+            tpgm = None
 
-            print(output)
-            dump_logs(logdir, output + "\n")
+        # Setup optimizer, lr_scheduler and loss function
+        optimizer_params = {
+            "lr": args.lr,
+            "weight_decay": 5.0e-4,
+            "momentum": 0.9,
+            "nesterov": True,
+        }
+        optimizer = torch.optim.SGD(model.parameters(), **optimizer_params)
+        loss_fn = torch.nn.CrossEntropyLoss(reduction="mean")
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epoch)
+
+        start_epoch = 0
+        best_acc1 = -100.0
+        best_model = model
+
+        # ================================ Training ==========================================
+        for epoch in range(start_epoch, args.epoch):
+            best_acc1, best_model = train_one_epoch(
+                args,
+                model,
+                loss_fn,
+                optimizer,
+                scheduler,
+                tpgm,
+                trainloader,
+                valloader,
+                device,
+                logdir,
+                epoch,
+                best_acc1,
+                best_model,
+            )
+        # ================================ Testing ==========================================
+        print("start testing")
+
+        sites = corruption
+
+        loaders = []
+
+        loaders.append(torch.utils.data.DataLoader(te_dataset,batch_size=args.batch_size*args.gpu_per_node*2))
+
+
+        best_model.eval()
+        with torch.no_grad():
+            for site, loader in zip(sites, loaders):
+                test_top1 = AverageMeter("Acc@1", ":6.2f")
+                test_top5 = AverageMeter("Acc@5", ":6.2f")
+                for i, (image, target) in enumerate(loader):
+                    image = image.to(device)
+                    target = target.to(device)
+                    logit = best_model(image)
+
+                    acc1, acc5 = accuracy(logit, target, topk=(1, 5))
+                    test_top1.update(acc1[0], image.size(0))
+                    test_top5.update(acc5[0], image.size(0))
+                    if i % args.print_interval == 0:
+                        output = "{} test: [{}/{}]".format(
+                            site,
+                            i,
+                            len(loader),
+                        )
+                        print(output)
+
+                output = "{site} test results: Prec@1 {top1.avg:.3f} Prec@5 {top5.avg:.3f}\t".format(
+                    site=site,
+                    top1=test_top1,
+                    top5=test_top5,
+                )
+
+                print(output)
+                dump_logs(logdir, output + "\n")
 
 def main(args):
     now = datetime.now()
@@ -280,7 +208,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--print_interval",
-        default=4,
+        default=3,
         type=int,
         help="print interval",
     )
@@ -292,7 +220,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--n_workers",
-        default=4,
+        default=1,
         type=int,
         help="number of workers",
     )
