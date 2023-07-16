@@ -19,7 +19,6 @@ from robustbench.data import load_cifar10c
 from torch.utils.data import TensorDataset
 from torchvision import transforms
 
-from datasets.domainnet_loader import Cifar10CDataset
 
 
 def train(logdir, args):
@@ -180,18 +179,16 @@ def train(logdir, args):
     sites = ["cifar10","cifar10c"]
 
     loaders = []
-    loaders.append(get_test_loader(os.getcwd(),batch_size=args.batch_size*args.gpu_per_node * 2))
+    loaders[0] = get_test_loader(os.getcwd(),batch_size=args.batch_size*args.gpu_per_node * 2)
 
     x_corr, y_corr = load_cifar10c(10000)
+    test_data = TensorDataset(x_corr,y_corr)
     test_transforms = transforms.Compose([transforms.Resize(224),
                                           transforms.Normalize(
         mean=[0.4914, 0.4822, 0.4465],
         std=[0.2023, 0.1994, 0.2010],
     )])
-	
-    test_data = Cifar10CDataset(x_corr,y_corr,transform=test_transforms)
-
-    loaders.append(torch.utils.data.DataLoader(test_data,batch_size=args.batch_size*args.gpu_per_node*2))
+    loaders[1] = torch.utils.data.DataLoader(test_data,batch_size=args.batch_size*args.gpu_per_node*2,transforms=test_transforms)
 
 
     best_model.eval()
