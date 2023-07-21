@@ -33,7 +33,7 @@ def train(logdir, args):
                "zoom_blur", "frost", "glass_blur", "impulse_noise", "contrast",
                "jpeg_compression", "elastic_transform"]
     
-    for i in range(3):
+    for i in range(14):
         corruption = CORRUPTIONS[i]
         tr_dataset, val_dataset, te_dataset = get_loaders("cifar10c",".",corruption,5)
       

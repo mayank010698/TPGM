@@ -2,12 +2,12 @@ python main_finetune.py --arch clip_resnet50 \
                         --id clip_vanilla \
                         --percent 100 \
                         --lr 1e-3 \
-                        --epoch 15 \
+                        --epoch 50 \
                         --gpu_per_node 4  \
                         --batch_size 64 \
                         --data_dir /datasets/domainnet \
                         --meta_dir ./datasets/ \
                         --load_pretrained pre_trained/clip_resnet50_pretrain.pt \
                         --n_classes 10 \
-                        --proj_freq 4 \
-                        --max_iters 50
+                        --proj_freq 0 \
+                        --max_iters 100
